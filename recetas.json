@@ -1,0 +1,37 @@
+[
+    {
+        "nombre": "Arroz chaufa rápido",
+        "ingredientes": ["arroz", "huevo", "aceite", "sillao"],
+        "tiempo": 20,
+        "saludable": false,
+        "economico": true
+    },
+    {
+        "nombre": "Tortilla de huevo",
+        "ingredientes": ["huevo", "aceite", "sal"],
+        "tiempo": 10,
+        "saludable": false,
+        "economico": true
+    },
+    {
+        "nombre": "Puré de papa",
+        "ingredientes": ["papa", "mantequilla", "sal", "leche"],
+        "tiempo": 25,
+        "saludable": true,
+        "economico": true
+    },
+    {
+        "nombre": "Ensalada de papa",
+        "ingredientes": ["papa", "zanahoria", "mayonesa", "huevo"],
+        "tiempo": 20,
+        "saludable": true,
+        "economico": true
+    },
+    {
+        "nombre": "Arroz con huevo",
+        "ingredientes": ["arroz", "huevo", "aceite", "sal"],
+        "tiempo": 15,
+        "saludable": false,
+        "economico": true
+    }
+]
