@@ -44,7 +44,7 @@ export default function App() {
     return (
       <View className="flex-1 items-center justify-center bg-food-light">
         <ActivityIndicator size="large" color="#FF8C42" />
-        <Text className="mt-4 text-food-dark text-lg">Cargando Maaqo...</Text>
+        <Text className="mt-4 text-food-dark text-lg">Cargando Maqoo...</Text>
       </View>
     );
   }
@@ -68,7 +68,7 @@ export default function App() {
           <Stack.Screen 
             name="Home" 
             component={HomeScreen}
-            options={{ title: 'Maaqo' }}
+            options={{ title: 'Maqoo' }}
           />
           <Stack.Screen 
             name="Search" 

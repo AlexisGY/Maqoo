@@ -1,11 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const STORAGE_KEYS = {
-  RECIPES: '@maaqo:recipes',
-  PANTRY: '@maaqo:pantry',
-  PREFERENCES: '@maaqo:preferences',
-  INITIALIZED: '@maaqo:initialized',
-  FAVORITES: '@maaqo:favorites',
+  RECIPES: '@maqoo:recipes',
+  PANTRY: '@maqoo:pantry',
+  PREFERENCES: '@maqoo:preferences',
+  INITIALIZED: '@maqoo:initialized',
+  FAVORITES: '@maqoo:favorites',
 };
 
 // =====================================================
