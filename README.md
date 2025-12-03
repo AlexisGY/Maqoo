@@ -15,7 +15,8 @@ Aplicación móvil desarrollada en React Native con Expo SDK 54 que te ayuda a e
 
 - React Native con Expo SDK 54
 - NativeWind (Tailwind CSS para React Native)
-- AsyncStorage para persistencia local
+- AsyncStorage para caché offline
+- API NestJS + Prisma para datos remotos
 - React Navigation para navegación
 - Expo Camera para funcionalidad de fotos
 
@@ -110,6 +111,20 @@ La app utiliza algoritmos mejorados para:
 - [ ] Recomendaciones basadas en ingredientes detectados
 - [ ] Favoritos de recetas
 - [ ] Historial de recetas cocinadas
+
+## API Backend y despliegue
+
+El backend se ejecuta con NestJS + Prisma y expone los módulos `auth`, `recipes`, `pantry`, `favorites` y `preferences` bajo el prefijo `/api`.
+
+- Base URL gestionada sugerida: `https://api.maqoo.app/api` (ajusta al dominio del proveedor gestionado).
+- Cabeceras requeridas: `Content-Type: application/json` y `Authorization: Bearer <token>` para todos los endpoints protegidos.
+- Autenticación: `/auth/register` y `/auth/login` devuelven un JWT que la app guarda en SecureStore/Keychain.
+- Recetas: `/recipes` admite paginación (`page`, `limit`) y filtros (`maxTime`, `healthy`, `economical`).
+- Despensa: `/pantry` CRUD completo.
+- Favoritos: `/favorites` para listar y `/favorites/:recipeId/toggle` para alternar.
+- Preferencias: `/preferences` para leer/actualizar filtros por tiempo/saludable/económico.
+
+Consulta `backend/DEPLOYMENT.md` para los pasos de despliegue en un servicio gestionado (Render/Railway/Fly.io) y variables de entorno necesarias.
 
 ## Licencia
 
