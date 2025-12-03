@@ -1,4 +1,4 @@
-# Maaqo - App Móvil de Recetas
+# Maqoo - App Móvil de Recetas
 
 Aplicación móvil desarrollada en React Native con Expo SDK 54 que te ayuda a encontrar qué cocinar según los ingredientes que tienes disponibles.
 
@@ -50,7 +50,7 @@ npm start
 ## Estructura del Proyecto
 
 ```
-Maaqo/
+Maqoo/
 ├── src/
 │   ├── components/      # Componentes reutilizables
 │   ├── screens/         # Pantallas de la app
