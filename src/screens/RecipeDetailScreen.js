@@ -127,6 +127,14 @@ const RecipeDetailScreen = () => {
           </View>
         </View>
 
+        {/* Descripción */}
+        {recipe.descripcion ? (
+          <View className="bg-white rounded-xl p-4 mb-4 shadow-sm">
+            <Text className="text-xl font-bold text-food-dark mb-2">Descripción</Text>
+            <Text className="text-gray-700">{recipe.descripcion}</Text>
+          </View>
+        ) : null}
+
         {/* Ingredientes */}
         <View className="bg-white rounded-xl p-4 mb-4 shadow-sm">
           <Text className="text-xl font-bold text-food-dark mb-3">
@@ -150,6 +158,25 @@ const RecipeDetailScreen = () => {
               />
             ))}
           </View>
+        </View>
+
+        {/* Preparación */}
+        <View className="bg-white rounded-xl p-4 shadow-sm mb-6">
+          <Text className="text-xl font-bold text-food-dark mb-3">
+            Preparación
+          </Text>
+          {recipe.instrucciones ? (
+            <Text className="text-gray-700 leading-6">
+              {recipe.instrucciones.split('\n').map((line, idx) => (
+                <Text key={idx}>
+                  {line}
+                  {'\n'}
+                </Text>
+              ))}
+            </Text>
+          ) : (
+            <Text className="text-gray-500">Aún no hay pasos detallados para esta receta.</Text>
+          )}
         </View>
 
         {/* Información adicional */}

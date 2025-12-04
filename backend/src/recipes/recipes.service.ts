@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateRecipeDto } from './dto/create-recipe.dto';
 import { UpdateRecipeDto } from './dto/update-recipe.dto';
+import { defaultRecipes } from './recipes.seed';
 
 @Injectable()
 export class RecipesService {
@@ -12,6 +13,8 @@ export class RecipesService {
   }
 
   async findAll(userId: string, params: { page?: number; limit?: number; maxTime?: number; healthy?: boolean; economical?: boolean }) {
+    await this.ensureSeeded(userId);
+
     const page = params.page && params.page > 0 ? params.page : 1;
     const limit = params.limit && params.limit > 0 ? Math.min(params.limit, 50) : 10;
     const skip = (page - 1) * limit;
@@ -58,5 +61,24 @@ export class RecipesService {
     await this.findOne(userId, id);
     await this.prisma.recipe.delete({ where: { id } });
     return { deleted: true };
+  }
+
+  private normalizeIngredients(ingredients: string[]): string[] {
+    return ingredients.map((ing) => ing.toLowerCase().trim());
+  }
+
+  private async ensureSeeded(userId: string): Promise<void> {
+    const existing = await this.prisma.recipe.count({ where: { userId } });
+    if (existing > 0) {
+      return;
+    }
+
+    const data = defaultRecipes.map((recipe) => ({
+      ...recipe,
+      ingredientes: this.normalizeIngredients(recipe.ingredientes),
+      userId,
+    }));
+
+    await this.prisma.recipe.createMany({ data });
   }
 }

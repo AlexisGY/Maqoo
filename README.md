@@ -1,132 +1,69 @@
-# Maqoo - App Móvil de Recetas
+# Maqoo - App movil de recetas
 
-Aplicación móvil desarrollada en React Native con Expo SDK 54 que te ayuda a encontrar qué cocinar según los ingredientes que tienes disponibles.
-
-## Características
-
-- 🍳 **Base de recetas local**: Más de 40 recetas almacenadas localmente
-- 🥘 **Gestión de despensa**: Agrega y gestiona tus ingredientes disponibles
-- 🔍 **Búsqueda inteligente**: Encuentra recetas con búsqueda fuzzy y filtros avanzados
-- ⚡ **Algoritmos optimizados**: Sistema de scoring para recomendar las mejores recetas
-- 📱 **Sin conexión**: Funciona completamente offline
-- 📸 **Escanear ingredientes**: Preparado para análisis de alimentos con IA (próximamente)
-
-## Tecnologías
-
-- React Native con Expo SDK 54
-- NativeWind (Tailwind CSS para React Native)
-- AsyncStorage para caché offline
-- API NestJS + Prisma para datos remotos
-- React Navigation para navegación
-- Expo Camera para funcionalidad de fotos
+Aplicacion en React Native (Expo) y backend NestJS + Prisma para encontrar que cocinar segun tu despensa. Incluye reconocimiento de ingredientes con IA y busqueda de tiendas cercanas.
 
 ## Requisitos
+- Node.js 18-21
+- npm
+- Cuenta de Google Cloud (Vision y/o Places) opcional
+- PostgreSQL para el backend
 
-- Node.js 18.x, 19.x, 20.x o 21.x (recomendado: 18.x o 20.x LTS)
-- npm o yarn
-- Expo CLI (incluido con `npx`)
+## Variables de entorno
 
-## Instalación
-
-1. Asegúrate de tener una versión compatible de Node.js (18-21):
-```bash
-node --version
+Raiz (`.env`):
+```
+EXPO_PUBLIC_API_BASE_URL=http://<host-backend>:3000/api
+EXPO_PUBLIC_PLACES_BASE_URL=http://<host-places>:3001
 ```
 
-2. Instala las dependencias:
-```bash
+Backend (`backend/.env`):
+```
+DATABASE_URL=postgres://user:password@localhost:5432/maqoo
+JWT_SECRET=change-me
+PORT=3000
+INGREDIENT_AI_PROVIDER=vision            # vision para Google Cloud Vision, vacio para mocks/URL generica
+INGREDIENT_AI_KEY=<vision_api_key>       # obligatorio si provider=vision
+INGREDIENT_AI_URL=                       # opcional, solo si usas proveedor multipart propio
+PLACES_PORT=3001                         # puerto del microservicio de tiendas
+PLACES_PROVIDER=google                   # google o nominatim
+PLACES_API_KEY=<places_api_key>          # requerido si provider=google
+```
+
+Para la app Expo copia `.env.example` a `.env` y ajusta las URLs a tu IP local.
+
+## Como correr en local
+
+Backend solo (puerto 3000):
+```
+cd backend
 npm install
+npm run start:dev
 ```
 
-2. Inicia el proyecto:
-```bash
+Backend + microservicio de tiendas (puertos 3000 y 3001):
+```
+cd backend
+npm run start:dev:all
+```
+o solo tiendas:
+```
+node server/index.js   # desde la raiz
+```
+
+App Expo:
+```
+npm install
 npm start
+# o npx expo start -c para refrescar envs
 ```
+Escanea el QR en Expo Go y asegúrate de que la IP en `.env` apunte a tu maquina.
 
-3. Escanea el código QR con la app Expo Go en tu dispositivo móvil, o presiona:
-   - `a` para Android
-   - `i` para iOS
-   - `w` para web
+## Funcionalidades clave
+- Escaneo de ingredientes: `POST /api/ingredients/recognize` (multipart image). Usa Google Vision si `INGREDIENT_AI_PROVIDER=vision`, o responde con mocks sin configuracion.
+- Recetas: se siembran recetas base por usuario al primer listado; incluyen ingredientes normalizados e instrucciones.
+- Despensa, favoritos y preferencias con JWT.
+- Tiendas cercanas: microservicio en `server/index.js` con proveedor Google Places o Nominatim. La app consume `EXPO_PUBLIC_PLACES_BASE_URL`.
 
-## Estructura del Proyecto
-
-```
-Maqoo/
-├── src/
-│   ├── components/      # Componentes reutilizables
-│   ├── screens/         # Pantallas de la app
-│   ├── services/        # Servicios (almacenamiento, recetas)
-│   ├── utils/           # Utilidades y algoritmos
-│   └── data/            # Datos iniciales
-├── App.js               # Componente principal
-└── package.json
-```
-
-## Funcionalidades Principales
-
-### Home Screen
-- Vista de recetas destacadas
-- Estadísticas de despensa
-- Acceso rápido a búsqueda y gestión de despensa
-- Botón para escanear ingredientes
-
-### Búsqueda
-- Búsqueda por nombre de receta
-- Filtros por tiempo, saludable, económico
-- Resultados ordenados por relevancia
-
-### Detalle de Receta
-- Información completa de la receta
-- Lista de ingredientes con indicadores de disponibilidad
-- Porcentaje de ingredientes disponibles
-
-### Gestión de Despensa
-- Agregar/eliminar ingredientes
-- Búsqueda de ingredientes
-- Ingredientes comunes sugeridos
-
-### Escanear Ingredientes (Próximamente)
-- Toma fotos de ingredientes
-- Preparado para integración con IA de reconocimiento
-- Agregará automáticamente ingredientes detectados
-
-## Algoritmos
-
-La app utiliza algoritmos mejorados para:
-- **Matching de ingredientes**: Calcula el porcentaje de ingredientes disponibles
-- **Scoring de recetas**: Sistema de puntuación basado en múltiples factores
-- **Búsqueda fuzzy**: Búsqueda flexible por nombre e ingredientes
-- **Recomendaciones**: Ordenamiento inteligente por relevancia
-
-## Estado de Recetas
-
-- **Cocinable**: Tienes todos los ingredientes necesarios
-- **Casi cocinable**: Falta 1-2 ingredientes
-- **Sugerida**: Falta 3+ ingredientes
-
-## Próximas Funcionalidades
-
-- [ ] Análisis de alimentos con IA mediante fotos
-- [ ] Detección automática de ingredientes
-- [ ] Recomendaciones basadas en ingredientes detectados
-- [ ] Favoritos de recetas
-- [ ] Historial de recetas cocinadas
-
-## API Backend y despliegue
-
-El backend se ejecuta con NestJS + Prisma y expone los módulos `auth`, `recipes`, `pantry`, `favorites` y `preferences` bajo el prefijo `/api`.
-
-- Base URL gestionada sugerida: `https://api.maqoo.app/api` (ajusta al dominio del proveedor gestionado).
-- Cabeceras requeridas: `Content-Type: application/json` y `Authorization: Bearer <token>` para todos los endpoints protegidos.
-- Autenticación: `/auth/register` y `/auth/login` devuelven un JWT que la app guarda en SecureStore/Keychain.
-- Recetas: `/recipes` admite paginación (`page`, `limit`) y filtros (`maxTime`, `healthy`, `economical`).
-- Despensa: `/pantry` CRUD completo.
-- Favoritos: `/favorites` para listar y `/favorites/:recipeId/toggle` para alternar.
-- Preferencias: `/preferences` para leer/actualizar filtros por tiempo/saludable/económico.
-
-Consulta `backend/DEPLOYMENT.md` para los pasos de despliegue en un servicio gestionado (Render/Railway/Fly.io) y variables de entorno necesarias.
-
-## Licencia
-
-Este proyecto es parte de un trabajo académico.
-
+## Notas
+- Prefijo API del backend: `/api`.
+- Las API keys no se deben commitear; usa los `.env.example` como guia.
