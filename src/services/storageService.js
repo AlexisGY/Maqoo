@@ -1,136 +1,200 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
+import axios from 'axios';
+import { API_BASE_URL } from '../utils/apiClient';
+const TOKEN_KEY = 'maqoo_token'; // SecureStore solo permite alfanumérico, ".", "-" y "_"
 
-const STORAGE_KEYS = {
-  RECIPES: '@maqoo:recipes',
-  PANTRY: '@maqoo:pantry',
-  PREFERENCES: '@maqoo:preferences',
-  INITIALIZED: '@maqoo:initialized',
-  FAVORITES: '@maqoo:favorites',
+const CACHE_KEYS = {
+  RECIPES: '@maqoo:recipes-cache',
+  PANTRY: '@maqoo:pantry-cache',
+  PREFERENCES: '@maqoo:preferences-cache',
+  FAVORITES: '@maqoo:favorites-cache',
 };
+
+const APP_KEYS = {
+  INITIALIZED: '@maqoo:initialized',
+};
+
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 10000,
+});
+
+const isUnauthorized = (error) => {
+  const status = error?.response?.status;
+  return status === 401 || status === 403;
+};
+
+api.interceptors.request.use(async (config) => {
+  const token = await SecureStore.getItemAsync(TOKEN_KEY);
+  if (token) {
+    config.headers = {
+      ...config.headers,
+      Authorization: `Bearer ${token}`,
+    };
+  }
+  return config;
+});
+
+const readCache = async (key, fallback = null) => {
+  try {
+    const data = await AsyncStorage.getItem(key);
+    return data ? JSON.parse(data) : fallback;
+  } catch (error) {
+    console.warn('Cache read error', error);
+    return fallback;
+  }
+};
+
+const writeCache = async (key, value) => {
+  try {
+    await AsyncStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    console.warn('Cache write error', error);
+  }
+};
+
+// =====================================================
+//               AUTENTICACIÓN
+// =====================================================
+
+export const register = async (payload) => {
+  const response = await api.post('/auth/register', payload);
+  await SecureStore.setItemAsync(TOKEN_KEY, response.data.token);
+  return response.data;
+};
+
+export const login = async (payload) => {
+  const response = await api.post('/auth/login', payload);
+  await SecureStore.setItemAsync(TOKEN_KEY, response.data.token);
+  return response.data;
+};
+
+export const logout = async () => {
+  await SecureStore.deleteItemAsync(TOKEN_KEY);
+};
+
+export const getToken = async () => SecureStore.getItemAsync(TOKEN_KEY);
 
 // =====================================================
 //               GESTIÓN DE RECETAS
 // =====================================================
 
-export const getRecipes = async () => {
+export const getRecipes = async (params = {}) => {
+  const token = await getToken();
+  if (!token) {
+    return readCache(CACHE_KEYS.RECIPES, []);
+  }
+
   try {
-    const data = await AsyncStorage.getItem(STORAGE_KEYS.RECIPES);
-    return data ? JSON.parse(data) : [];
+    const response = await api.get('/recipes', { params });
+    const items = response.data?.items ?? response.data ?? [];
+    await writeCache(CACHE_KEYS.RECIPES, items);
+    return items;
   } catch (error) {
-    console.error('Error getting recipes:', error);
-    return [];
+    if (!isUnauthorized(error)) {
+      console.error('Error fetching recipes from API:', error.message);
+    }
+    return readCache(CACHE_KEYS.RECIPES, []);
   }
 };
 
-export const saveRecipes = async (recipes) => {
+export const saveRecipes = async (recipes = []) => {
   try {
-    await AsyncStorage.setItem(STORAGE_KEYS.RECIPES, JSON.stringify(recipes));
+    await writeCache(CACHE_KEYS.RECIPES, recipes);
     return true;
   } catch (error) {
-    console.error('Error saving recipes:', error);
+    console.error('Error saving recipes:', error.message);
     return false;
   }
 };
 
 export const addRecipe = async (recipe) => {
-  try {
-    const recipes = await getRecipes();
-    recipes.push(recipe);
-    await saveRecipes(recipes);
-    return true;
-  } catch (error) {
-    console.error('Error adding recipe:', error);
-    return false;
-  }
+  const response = await api.post('/recipes', recipe);
+  return response.data;
 };
 
 export const updateRecipe = async (recipeId, updatedRecipe) => {
-  try {
-    const recipes = await getRecipes();
-    const index = recipes.findIndex(r => r.id === recipeId);
-    if (index !== -1) {
-      recipes[index] = { ...recipes[index], ...updatedRecipe };
-      await saveRecipes(recipes);
-      return true;
-    }
-    return false;
-  } catch (error) {
-    console.error('Error updating recipe:', error);
-    return false;
-  }
+  const response = await api.patch(`/recipes/${recipeId}`, updatedRecipe);
+  return response.data;
 };
 
 export const deleteRecipe = async (recipeId) => {
-  try {
-    const recipes = await getRecipes();
-    const filtered = recipes.filter(r => r.id !== recipeId);
-    await saveRecipes(filtered);
-    return true;
-  } catch (error) {
-    console.error('Error deleting recipe:', error);
-    return false;
-  }
+  const response = await api.delete(`/recipes/${recipeId}`);
+  return response.data;
 };
 
 // =====================================================
 //               GESTIÓN DE DESPENSA
 // =====================================================
 
-export const getPantry = async () => {
-  try {
-    const data = await AsyncStorage.getItem(STORAGE_KEYS.PANTRY);
-    return data ? JSON.parse(data) : [];
-  } catch (error) {
-    console.error('Error getting pantry:', error);
-    return [];
-  }
+const normalizeIngredient = (ingredient) =>
+  typeof ingredient === 'string' ? ingredient.toLowerCase().trim() : ingredient.name?.toLowerCase().trim();
+
+const resolvePantryItemId = async (name) => {
+  const pantry = await api.get('/pantry');
+  const normalized = normalizeIngredient(name);
+  const match = pantry.data.find((item) => item.name === normalized);
+  return match?.id;
 };
 
-export const savePantry = async (ingredients) => {
+export const getPantry = async () => {
+  const token = await getToken();
+  if (!token) {
+    return readCache(CACHE_KEYS.PANTRY, []);
+  }
+
   try {
-    await AsyncStorage.setItem(STORAGE_KEYS.PANTRY, JSON.stringify(ingredients));
-    return true;
+    const response = await api.get('/pantry');
+    const ingredients = response.data.map((item) => normalizeIngredient(item));
+    await writeCache(CACHE_KEYS.PANTRY, ingredients);
+    return ingredients;
   } catch (error) {
-    console.error('Error saving pantry:', error);
-    return false;
+    if (!isUnauthorized(error)) {
+      console.error('Error fetching pantry from API:', error.message);
+    }
+    return readCache(CACHE_KEYS.PANTRY, []);
   }
 };
 
 export const addIngredient = async (ingredient) => {
   try {
-    const pantry = await getPantry();
-    const normalized = ingredient.toLowerCase().trim();
-    if (!pantry.includes(normalized)) {
-      pantry.push(normalized);
-      await savePantry(pantry);
-      return true;
-    }
-    return false;
+    const normalized = normalizeIngredient(ingredient);
+    await api.post('/pantry', { name: normalized });
+    return true;
   } catch (error) {
-    console.error('Error adding ingredient:', error);
+    console.error('Error adding ingredient:', error.message);
     return false;
   }
+};
+
+export const updateIngredient = async (id, ingredient) => {
+  const response = await api.patch(`/pantry/${id}`, { name: normalizeIngredient(ingredient) });
+  return response.data;
 };
 
 export const removeIngredient = async (ingredient) => {
   try {
-    const pantry = await getPantry();
-    const normalized = ingredient.toLowerCase().trim();
-    const filtered = pantry.filter(ing => ing !== normalized);
-    await savePantry(filtered);
-    return true;
+    const itemId = await resolvePantryItemId(ingredient);
+    if (itemId) {
+      await api.delete(`/pantry/${itemId}`);
+      return true;
+    }
   } catch (error) {
-    console.error('Error removing ingredient:', error);
-    return false;
+    console.error('Error removing ingredient:', error.message);
   }
+  return false;
 };
 
 export const clearPantry = async () => {
   try {
-    await AsyncStorage.removeItem(STORAGE_KEYS.PANTRY);
+    const pantry = await api.get('/pantry');
+    await Promise.all(pantry.data.map((item) => api.delete(`/pantry/${item.id}`)));
+    await AsyncStorage.removeItem(CACHE_KEYS.PANTRY);
     return true;
   } catch (error) {
-    console.error('Error clearing pantry:', error);
+    console.error('Error clearing pantry:', error.message);
+    await AsyncStorage.removeItem(CACHE_KEYS.PANTRY);
     return false;
   }
 };
@@ -140,31 +204,33 @@ export const clearPantry = async () => {
 // =====================================================
 
 export const getPreferences = async () => {
+  const fallback = {
+    maxTime: null,
+    healthy: null,
+    economical: null,
+  };
+
+  const token = await getToken();
+  if (!token) {
+    return readCache(CACHE_KEYS.PREFERENCES, fallback);
+  }
+
   try {
-    const data = await AsyncStorage.getItem(STORAGE_KEYS.PREFERENCES);
-    return data ? JSON.parse(data) : {
-      maxTime: null,
-      healthy: null,
-      economical: null,
-    };
+    const response = await api.get('/preferences');
+    await writeCache(CACHE_KEYS.PREFERENCES, response.data);
+    return response.data;
   } catch (error) {
-    console.error('Error getting preferences:', error);
-    return {
-      maxTime: null,
-      healthy: null,
-      economical: null,
-    };
+    if (!isUnauthorized(error)) {
+      console.error('Error fetching preferences:', error.message);
+    }
+    return readCache(CACHE_KEYS.PREFERENCES, fallback);
   }
 };
 
 export const savePreferences = async (preferences) => {
-  try {
-    await AsyncStorage.setItem(STORAGE_KEYS.PREFERENCES, JSON.stringify(preferences));
-    return true;
-  } catch (error) {
-    console.error('Error saving preferences:', error);
-    return false;
-  }
+  const response = await api.patch('/preferences', preferences);
+  await writeCache(CACHE_KEYS.PREFERENCES, response.data);
+  return response.data;
 };
 
 // =====================================================
@@ -173,7 +239,7 @@ export const savePreferences = async (preferences) => {
 
 export const isInitialized = async () => {
   try {
-    const value = await AsyncStorage.getItem(STORAGE_KEYS.INITIALIZED);
+    const value = await AsyncStorage.getItem(APP_KEYS.INITIALIZED);
     return value === 'true';
   } catch (error) {
     console.error('Error checking initialization:', error);
@@ -183,7 +249,7 @@ export const isInitialized = async () => {
 
 export const setInitialized = async () => {
   try {
-    await AsyncStorage.setItem(STORAGE_KEYS.INITIALIZED, 'true');
+    await AsyncStorage.setItem(APP_KEYS.INITIALIZED, 'true');
     return true;
   } catch (error) {
     console.error('Error setting initialization:', error);
@@ -196,50 +262,37 @@ export const setInitialized = async () => {
 // =====================================================
 
 export const getFavorites = async () => {
+  const token = await getToken();
+  if (!token) {
+    return readCache(CACHE_KEYS.FAVORITES, []);
+  }
+
   try {
-    const data = await AsyncStorage.getItem(STORAGE_KEYS.FAVORITES);
-    return data ? JSON.parse(data) : [];
+    const response = await api.get('/favorites');
+    const ids = response.data.map((favorite) => favorite.recipeId ?? favorite.recipe?.id);
+    await writeCache(CACHE_KEYS.FAVORITES, ids);
+    return ids;
   } catch (error) {
-    console.error('Error getting favorites:', error);
-    return [];
+    if (!isUnauthorized(error)) {
+      console.error('Error fetching favorites:', error.message);
+    }
+    return readCache(CACHE_KEYS.FAVORITES, []);
   }
 };
 
 export const addFavorite = async (recipeId) => {
-  try {
-    const favorites = await getFavorites();
-    if (!favorites.includes(recipeId)) {
-      favorites.push(recipeId);
-      await AsyncStorage.setItem(STORAGE_KEYS.FAVORITES, JSON.stringify(favorites));
-      return true;
-    }
-    return false;
-  } catch (error) {
-    console.error('Error adding favorite:', error);
-    return false;
-  }
+  const response = await api.post(`/favorites/${recipeId}/toggle`);
+  return response.data;
 };
 
 export const removeFavorite = async (recipeId) => {
-  try {
-    const favorites = await getFavorites();
-    const filtered = favorites.filter(id => id !== recipeId);
-    await AsyncStorage.setItem(STORAGE_KEYS.FAVORITES, JSON.stringify(filtered));
-    return true;
-  } catch (error) {
-    console.error('Error removing favorite:', error);
-    return false;
-  }
+  const response = await api.post(`/favorites/${recipeId}/toggle`);
+  return response.data;
 };
 
 export const isFavorite = async (recipeId) => {
-  try {
-    const favorites = await getFavorites();
-    return favorites.includes(recipeId);
-  } catch (error) {
-    console.error('Error checking favorite:', error);
-    return false;
-  }
+  const favorites = await getFavorites();
+  return Array.isArray(favorites) ? favorites.includes(recipeId) : false;
 };
 
 // =====================================================
@@ -248,17 +301,12 @@ export const isFavorite = async (recipeId) => {
 
 export const clearAllData = async () => {
   try {
-    await AsyncStorage.multiRemove([
-      STORAGE_KEYS.RECIPES,
-      STORAGE_KEYS.PANTRY,
-      STORAGE_KEYS.PREFERENCES,
-      STORAGE_KEYS.INITIALIZED,
-      STORAGE_KEYS.FAVORITES,
-    ]);
+    await SecureStore.deleteItemAsync(TOKEN_KEY);
+    await AsyncStorage.multiRemove(Object.values(CACHE_KEYS));
+    await AsyncStorage.removeItem(APP_KEYS.INITIALIZED);
     return true;
   } catch (error) {
     console.error('Error clearing all data:', error);
     return false;
   }
 };
-

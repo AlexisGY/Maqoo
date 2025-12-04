@@ -11,14 +11,17 @@ import SearchScreen from './src/screens/SearchScreen';
 import RecipeDetailScreen from './src/screens/RecipeDetailScreen';
 import PantryScreen from './src/screens/PantryScreen';
 import ScanIngredientsScreen from './src/screens/ScanIngredientsScreen';
+import StoreListScreen from './src/screens/StoreListScreen';
+import LoginScreen from './src/screens/LoginScreen';
 
-import { isInitialized, setInitialized, saveRecipes } from './src/services/storageService';
+import { isInitialized, setInitialized, saveRecipes, getToken } from './src/services/storageService';
 import { initialRecipes } from './src/data/initialRecipes';
 
 const Stack = createStackNavigator();
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
+  const [hasToken, setHasToken] = useState(false);
 
   useEffect(() => {
     initializeApp();
@@ -27,7 +30,9 @@ export default function App() {
   const initializeApp = async () => {
     try {
       const initialized = await isInitialized();
-      
+      const token = await getToken();
+      setHasToken(Boolean(token));
+
       if (!initialized) {
         // Migrar recetas iniciales
         await saveRecipes(initialRecipes);
@@ -54,7 +59,7 @@ export default function App() {
       <NavigationContainer>
         <StatusBar style="dark" />
         <Stack.Navigator
-          initialRouteName="Home"
+          initialRouteName={hasToken ? 'Home' : 'Login'}
           screenOptions={{
             headerStyle: {
               backgroundColor: '#FFF8E7',
@@ -65,6 +70,17 @@ export default function App() {
             },
           }}
         >
+          <Stack.Screen
+            name="Login"
+            options={{ title: 'Bienvenido', headerShown: false }}
+          >
+            {(props) => (
+              <LoginScreen
+                {...props}
+                onAuthSuccess={() => setHasToken(true)}
+              />
+            )}
+          </Stack.Screen>
           <Stack.Screen 
             name="Home" 
             component={HomeScreen}
@@ -85,10 +101,15 @@ export default function App() {
             component={PantryScreen}
             options={{ title: 'Mi Despensa' }}
           />
-          <Stack.Screen 
-            name="ScanIngredients" 
+          <Stack.Screen
+            name="ScanIngredients"
             component={ScanIngredientsScreen}
             options={{ title: 'Escanear Ingredientes' }}
+          />
+          <Stack.Screen
+            name="Stores"
+            component={StoreListScreen}
+            options={{ title: 'Tiendas Cercanas' }}
           />
         </Stack.Navigator>
       </NavigationContainer>
