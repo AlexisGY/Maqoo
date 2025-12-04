@@ -15,31 +15,67 @@ import StoreCard from '../components/StoreCard';
 import { getFeaturedRecipes, getCookableRecipesList } from '../services/recipeService';
 import { getPantry } from '../services/storageService';
 import { getNearbyStores } from '../services/storeService';
+import * as Location from 'expo-location';
 
 const HomeScreen = () => {
   const navigation = useNavigation();
   const [featuredRecipes, setFeaturedRecipes] = useState([]);
   const [nearbyStores, setNearbyStores] = useState([]);
+  const [storeError, setStoreError] = useState(null);
   const [cookableCount, setCookableCount] = useState(0);
   const [pantryCount, setPantryCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [location, setLocation] = useState(null);
+  const [permissionChecked, setPermissionChecked] = useState(false);
 
   useEffect(() => {
     loadData();
   }, []);
 
+  const requestLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== Location.PermissionStatus.GRANTED) {
+        setStoreError('Activa los permisos de ubicación para ver tiendas cercanas.');
+        setPermissionChecked(true);
+        return null;
+      }
+
+      const position = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      const coords = {
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+      };
+      setLocation(coords);
+      setPermissionChecked(true);
+      return coords;
+    } catch (e) {
+      setStoreError('No se pudo obtener tu ubicación.');
+      setPermissionChecked(true);
+      return null;
+    }
+  };
+
   const loadData = async () => {
     try {
-      const [recipes, stores, cookable, pantry] = await Promise.all([
+      let coords = location;
+      if (!coords && !permissionChecked) {
+        coords = await requestLocation();
+      }
+
+      const [recipes, storesResponse, cookable, pantry] = await Promise.all([
         getFeaturedRecipes(6),
-        getNearbyStores(5),
+        coords ? getNearbyStores({ ...coords, pageSize: 5 }) : Promise.resolve({ stores: [], error: 'Ubicación no disponible.' }),
         getCookableRecipesList(),
         getPantry(),
       ]);
-      
+
       setFeaturedRecipes(recipes);
-      setNearbyStores(stores);
+      setNearbyStores(storesResponse.stores || []);
+      setStoreError(storesResponse.error || null);
       setCookableCount(cookable.length);
       setPantryCount(pantry.length);
     } catch (error) {
@@ -132,12 +168,19 @@ const HomeScreen = () => {
             <Text className="text-xl font-bold text-food-dark">
               Tiendas Cercanas
             </Text>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('Stores')}>
               <Text className="text-food-orange font-semibold">Ver todas</Text>
             </TouchableOpacity>
           </View>
 
-          {nearbyStores.length === 0 ? (
+          {storeError && (
+            <View className="bg-red-100 border border-red-200 rounded-xl p-4 mb-3">
+              <Text className="text-red-800 font-semibold">No se pudieron cargar las tiendas</Text>
+              <Text className="text-red-700 mt-1">{storeError}</Text>
+            </View>
+          )}
+
+          {!storeError && nearbyStores.length === 0 ? (
             <View className="bg-white rounded-xl p-6 items-center">
               <Icon name="store-outline" size={48} color="#9CA3AF" />
               <Text className="text-gray-600 mt-4 text-center">

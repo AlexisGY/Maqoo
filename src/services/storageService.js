@@ -1,9 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import axios from 'axios';
-
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
-const TOKEN_KEY = 'maqoo:token';
+import { API_BASE_URL } from '../utils/apiClient';
+const TOKEN_KEY = 'maqoo_token'; // SecureStore solo permite alfanumérico, ".", "-" y "_"
 
 const CACHE_KEYS = {
   RECIPES: '@maqoo:recipes-cache',
@@ -20,6 +19,11 @@ const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 10000,
 });
+
+const isUnauthorized = (error) => {
+  const status = error?.response?.status;
+  return status === 401 || status === 403;
+};
 
 api.interceptors.request.use(async (config) => {
   const token = await SecureStore.getItemAsync(TOKEN_KEY);
@@ -77,14 +81,31 @@ export const getToken = async () => SecureStore.getItemAsync(TOKEN_KEY);
 // =====================================================
 
 export const getRecipes = async (params = {}) => {
+  const token = await getToken();
+  if (!token) {
+    return readCache(CACHE_KEYS.RECIPES, []);
+  }
+
   try {
     const response = await api.get('/recipes', { params });
     const items = response.data?.items ?? response.data ?? [];
     await writeCache(CACHE_KEYS.RECIPES, items);
     return items;
   } catch (error) {
-    console.error('Error fetching recipes from API:', error.message);
+    if (!isUnauthorized(error)) {
+      console.error('Error fetching recipes from API:', error.message);
+    }
     return readCache(CACHE_KEYS.RECIPES, []);
+  }
+};
+
+export const saveRecipes = async (recipes = []) => {
+  try {
+    await writeCache(CACHE_KEYS.RECIPES, recipes);
+    return true;
+  } catch (error) {
+    console.error('Error saving recipes:', error.message);
+    return false;
   }
 };
 
@@ -118,13 +139,20 @@ const resolvePantryItemId = async (name) => {
 };
 
 export const getPantry = async () => {
+  const token = await getToken();
+  if (!token) {
+    return readCache(CACHE_KEYS.PANTRY, []);
+  }
+
   try {
     const response = await api.get('/pantry');
     const ingredients = response.data.map((item) => normalizeIngredient(item));
     await writeCache(CACHE_KEYS.PANTRY, ingredients);
     return ingredients;
   } catch (error) {
-    console.error('Error fetching pantry from API:', error.message);
+    if (!isUnauthorized(error)) {
+      console.error('Error fetching pantry from API:', error.message);
+    }
     return readCache(CACHE_KEYS.PANTRY, []);
   }
 };
@@ -176,17 +204,26 @@ export const clearPantry = async () => {
 // =====================================================
 
 export const getPreferences = async () => {
+  const fallback = {
+    maxTime: null,
+    healthy: null,
+    economical: null,
+  };
+
+  const token = await getToken();
+  if (!token) {
+    return readCache(CACHE_KEYS.PREFERENCES, fallback);
+  }
+
   try {
     const response = await api.get('/preferences');
     await writeCache(CACHE_KEYS.PREFERENCES, response.data);
     return response.data;
   } catch (error) {
-    console.error('Error fetching preferences:', error.message);
-    return readCache(CACHE_KEYS.PREFERENCES, {
-      maxTime: null,
-      healthy: null,
-      economical: null,
-    });
+    if (!isUnauthorized(error)) {
+      console.error('Error fetching preferences:', error.message);
+    }
+    return readCache(CACHE_KEYS.PREFERENCES, fallback);
   }
 };
 
@@ -225,13 +262,20 @@ export const setInitialized = async () => {
 // =====================================================
 
 export const getFavorites = async () => {
+  const token = await getToken();
+  if (!token) {
+    return readCache(CACHE_KEYS.FAVORITES, []);
+  }
+
   try {
     const response = await api.get('/favorites');
     const ids = response.data.map((favorite) => favorite.recipeId ?? favorite.recipe?.id);
     await writeCache(CACHE_KEYS.FAVORITES, ids);
     return ids;
   } catch (error) {
-    console.error('Error fetching favorites:', error.message);
+    if (!isUnauthorized(error)) {
+      console.error('Error fetching favorites:', error.message);
+    }
     return readCache(CACHE_KEYS.FAVORITES, []);
   }
 };

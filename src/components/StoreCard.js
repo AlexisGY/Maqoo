@@ -22,13 +22,17 @@ const StoreCard = ({ store, onPress }) => {
               </Text>
             </View>
           </View>
-          {store.open ? (
+          {store.open === true ? (
             <View className="bg-green-100 px-2 py-1 rounded-full">
               <Text className="text-xs font-semibold text-green-800">Abierto</Text>
             </View>
-          ) : (
+          ) : store.open === false ? (
             <View className="bg-red-100 px-2 py-1 rounded-full">
               <Text className="text-xs font-semibold text-red-800">Cerrado</Text>
+            </View>
+          ) : (
+            <View className="bg-gray-100 px-2 py-1 rounded-full">
+              <Text className="text-xs font-semibold text-gray-700">Horario N/D</Text>
             </View>
           )}
         </View>
@@ -37,7 +41,7 @@ const StoreCard = ({ store, onPress }) => {
           <View className="flex-row items-center">
             <Icon name="star" size={16} color="#FFD23F" />
             <Text className="ml-1 text-sm text-food-dark font-semibold">
-              {store.rating}
+              {store.rating ?? 'N/D'}
             </Text>
           </View>
           
