@@ -52,7 +52,10 @@ export class IngredientsService {
         requests: [
           {
             image: { content: file.buffer.toString('base64') },
-            features: [{ type: 'LABEL_DETECTION', maxResults: 10 }],
+            features: [
+              { type: 'LABEL_DETECTION', maxResults: 20 },
+              { type: 'OBJECT_LOCALIZATION', maxResults: 10 },
+            ],
           },
         ],
       };
@@ -137,7 +140,20 @@ export class IngredientsService {
             name: item?.description?.toString().toLowerCase(),
             confidence: Number(item?.score ?? 0),
           }))
-          .filter((item) => item.name),
+          .filter((item) => item.name && item.confidence > 0.3), // Filtrar por confianza mínima
+      );
+    }
+
+    // Procesar objetos localizados y filtrar solo comida
+    const localizedObjects = payload?.responses?.[0]?.localizedObjectAnnotations;
+    if (Array.isArray(localizedObjects)) {
+      ingredients.push(
+        ...localizedObjects
+          .map((item: any) => ({
+            name: item?.name?.toString().toLowerCase(),
+            confidence: Number(item?.score ?? 0),
+          }))
+          .filter((item) => item.name && item.confidence > 0.3),
       );
     }
 
@@ -152,6 +168,71 @@ export class IngredientsService {
       'citrus',
       'citrus fruit',
       'natural foods',
+    ]);
+
+    // Palabras clave de objetos no comestibles que deben ser filtrados
+    const nonFoodKeywords = new Set([
+      'ceramic',
+      'ceramics',
+      'cerámica',
+      'plate',
+      'plato',
+      'bowl',
+      'tazón',
+      'dish',
+      'dishes',
+      'container',
+      'contenedor',
+      'pottery',
+      'porcelana',
+      'porcelain',
+      'vase',
+      'vaso',
+      'cup',
+      'taza',
+      'mug',
+      'jar',
+      'tarro',
+      'bottle',
+      'botella',
+      'glass',
+      'vidrio',
+      'plastic',
+      'plástico',
+      'metal',
+      'metálico',
+      'wood',
+      'madera',
+      'furniture',
+      'mueble',
+      'table',
+      'mesa',
+      'counter',
+      'mostrador',
+      'kitchen',
+      'cocina',
+      'appliance',
+      'electrodoméstico',
+      'utensil',
+      'utensilio',
+      'knife',
+      'cuchillo',
+      'fork',
+      'tenedor',
+      'spoon',
+      'cuchara',
+      'paper',
+      'papel',
+      'bag',
+      'bolsa',
+      'packaging',
+      'empaque',
+      'label',
+      'etiqueta',
+      'text',
+      'texto',
+      'writing',
+      'escritura',
     ]);
 
     const synonymRules: Array<{ test: RegExp; value: string }> = [
@@ -194,6 +275,22 @@ export class IngredientsService {
       if (!value || stopwords.has(value)) {
         return null;
       }
+      
+      // Filtrar objetos no comestibles
+      const words = value.split(/\s+/);
+      for (const word of words) {
+        if (nonFoodKeywords.has(word)) {
+          return null;
+        }
+      }
+      
+      // Verificar si contiene palabras clave de objetos no comestibles
+      for (const keyword of nonFoodKeywords) {
+        if (value.includes(keyword)) {
+          return null;
+        }
+      }
+      
       const rule = synonymRules.find((r) => r.test.test(value));
       return rule ? rule.value : value;
     };
@@ -203,6 +300,10 @@ export class IngredientsService {
       const normalizedName = normalizeName(item.name);
       if (!normalizedName) continue;
       const confidence = Math.max(0, Math.min(1, isNaN(item.confidence) ? 0 : item.confidence));
+      
+      // Filtrar por confianza mínima más alta para evitar falsos positivos
+      if (confidence < 0.4) continue;
+      
       const prev = deduped.get(normalizedName) ?? 0;
       if (confidence > prev) {
         deduped.set(normalizedName, confidence);

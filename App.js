@@ -83,9 +83,15 @@ export default function App() {
           </Stack.Screen>
           <Stack.Screen 
             name="Home" 
-            component={HomeScreen}
             options={{ title: 'Maqoo' }}
+          >
+            {(props) => (
+              <HomeScreen
+                {...props}
+                onLogout={() => setHasToken(false)}
           />
+            )}
+          </Stack.Screen>
           <Stack.Screen 
             name="Search" 
             component={SearchScreen}

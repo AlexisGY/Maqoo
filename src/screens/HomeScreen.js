@@ -13,11 +13,11 @@ import { useNavigation } from '@react-navigation/native';
 import RecipeCard from '../components/RecipeCard';
 import StoreCard from '../components/StoreCard';
 import { getFeaturedRecipes, getCookableRecipesList } from '../services/recipeService';
-import { getPantry } from '../services/storageService';
+import { getPantry, logout } from '../services/storageService';
 import { getNearbyStores } from '../services/storeService';
 import * as Location from 'expo-location';
 
-const HomeScreen = () => {
+const HomeScreen = ({ onLogout }) => {
   const navigation = useNavigation();
   const [featuredRecipes, setFeaturedRecipes] = useState([]);
   const [nearbyStores, setNearbyStores] = useState([]);
@@ -28,6 +28,19 @@ const HomeScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [location, setLocation] = useState(null);
   const [permissionChecked, setPermissionChecked] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      onLogout?.();
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Login' }],
+      });
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error);
+    }
+  };
 
   useEffect(() => {
     loadData();
@@ -109,12 +122,22 @@ const HomeScreen = () => {
       <View className="p-4">
         {/* Header con estadísticas */}
         <View className="bg-white rounded-xl p-4 mb-4 shadow-sm">
+          <View className="flex-row justify-between items-start mb-2">
+            <View className="flex-1">
           <Text className="text-2xl font-bold text-food-dark mb-2">
             ¡Hola! 👋
           </Text>
           <Text className="text-gray-600 mb-3">
             Encuentra qué cocinar con lo que tienes
           </Text>
+            </View>
+            <TouchableOpacity
+              onPress={handleLogout}
+              className="bg-red-50 rounded-lg p-2 border border-red-200"
+            >
+              <Icon name="logout" size={20} color="#DC2626" />
+            </TouchableOpacity>
+          </View>
           
           <View className="flex-row justify-around mt-4">
             <View className="items-center">
