@@ -33,8 +33,24 @@ api.interceptors.request.use(async (config) => {
       Authorization: `Bearer ${token}`,
     };
   }
+  console.log('[API Request]', config.method?.toUpperCase(), config.baseURL + config.url);
   return config;
 });
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    console.error('[API Error]', {
+      message: error.message,
+      code: error.code,
+      url: error.config?.url,
+      baseURL: error.config?.baseURL,
+      status: error.response?.status,
+      data: error.response?.data,
+    });
+    return Promise.reject(error);
+  }
+);
 
 const readCache = async (key, fallback = null) => {
   try {
@@ -59,9 +75,21 @@ const writeCache = async (key, value) => {
 // =====================================================
 
 export const register = async (payload) => {
-  const response = await api.post('/auth/register', payload);
-  await SecureStore.setItemAsync(TOKEN_KEY, response.data.token);
-  return response.data;
+  try {
+    console.log('[Register] Attempting to register with:', { email: payload.email, name: payload.name });
+    console.log('[Register] API Base URL:', API_BASE_URL);
+    const response = await api.post('/auth/register', payload);
+    await SecureStore.setItemAsync(TOKEN_KEY, response.data.token);
+    return response.data;
+  } catch (error) {
+    console.error('[Register] Error details:', {
+      message: error.message,
+      code: error.code,
+      response: error.response?.data,
+      status: error.response?.status,
+    });
+    throw error;
+  }
 };
 
 export const login = async (payload) => {
