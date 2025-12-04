@@ -1,4 +1,4 @@
-import { buildUrl, fetchJson } from '../utils/apiClient';
+import { buildUrl, fetchJson, PLACES_BASE_URL } from '../utils/apiClient';
 
 const normalizeStore = (store) => ({
   id: store.id,
@@ -33,7 +33,7 @@ const fetchStores = async (params = {}) => {
     ...params,
   };
 
-  const url = buildUrl('/stores/nearby', mergedParams);
+  const url = buildUrl('/stores/nearby', mergedParams, PLACES_BASE_URL);
   const state = {
     stores: [],
     pagination: { ...defaultPagination, page: mergedParams.page, pageSize: mergedParams.pageSize },
