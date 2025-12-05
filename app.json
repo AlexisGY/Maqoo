@@ -19,13 +19,16 @@
       },
       "edgeToEdgeEnabled": true,
       "permissions": [
-        "CAMERA"
+        "CAMERA",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
       ]
     },
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSCameraUsageDescription": "Esta app necesita acceso a la cámara para escanear ingredientes."
+        "NSCameraUsageDescription": "Esta app necesita acceso a la camara para escanear ingredientes.",
+        "NSLocationWhenInUseUsageDescription": "Esta app usa tu ubicacion para mostrar tiendas cercanas."
       }
     },
     "web": {

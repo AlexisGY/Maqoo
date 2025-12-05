@@ -233,6 +233,216 @@ export class IngredientsService {
       'texto',
       'writing',
       'escritura',
+      // electronicos y otros
+      'phone',
+      'smartphone',
+      'laptop',
+      'computer',
+      'monitor',
+      'screen',
+      'tv',
+      'television',
+      'remote',
+      'controller',
+      'console',
+      'camera',
+      'video camera',
+      'keyboard',
+      'mouse',
+      'headphone',
+      'headphones',
+      'earphone',
+      'earphones',
+      'speaker',
+      'charger',
+      'cable',
+      'wire',
+      'plug',
+      'light',
+      'lamp',
+      'bulb',
+      'book',
+      'notebook',
+      'paper',
+      'card',
+      'wallet',
+      'money',
+      'coin',
+      'bill',
+      'shoe',
+      'clothing',
+      'ropa',
+      'zapato',
+      'car',
+      'auto',
+      'vehicle',
+      'vehiculo',
+      'toy',
+      'juguete',
+    ]);
+
+    const foodKeywords = new Set([
+      // frutas
+      'apple',
+      'manzana',
+      'banana',
+      'platano',
+      'orange',
+      'naranja',
+      'lemon',
+      'limon',
+      'lime',
+      'uva',
+      'grape',
+      'pear',
+      'pera',
+      'peach',
+      'durazno',
+      'cherry',
+      'melon',
+      'sandia',
+      'watermelon',
+      'pineapple',
+      'pina',
+      'mango',
+      'berry',
+      'fresa',
+      'strawberry',
+      'blueberry',
+      'raspberry',
+      'blackberry',
+      'kiwi',
+      // verduras y hortalizas
+      'tomate',
+      'tomato',
+      'papa',
+      'potato',
+      'zanahoria',
+      'carrot',
+      'lechuga',
+      'lettuce',
+      'cebolla',
+      'onion',
+      'ajo',
+      'garlic',
+      'pimiento',
+      'pepper',
+      'chili',
+      'pepino',
+      'cucumber',
+      'calabacin',
+      'zucchini',
+      'calabaza',
+      'squash',
+      'berenjena',
+      'eggplant',
+      'brocoli',
+      'broccoli',
+      'coliflor',
+      'cauliflower',
+      'espinaca',
+      'spinach',
+      'col',
+      'cabbage',
+      'maiz',
+      'corn',
+      'aguacate',
+      'avocado',
+      'apio',
+      'celery',
+      'cilantro',
+      'parsley',
+      'basil',
+      'oregano',
+      'thyme',
+      'romero',
+      'rosemary',
+      'menta',
+      'mint',
+      // carnes y proteinas
+      'pollo',
+      'chicken',
+      'res',
+      'beef',
+      'carne de res',
+      'pork',
+      'cerdo',
+      'lamb',
+      'cordero',
+      'turkey',
+      'pavo',
+      'fish',
+      'pescado',
+      'salmon',
+      'tuna',
+      'atun',
+      'shrimp',
+      'camaron',
+      'seafood',
+      'mariscos',
+      'egg',
+      'egg yolk',
+      'egg white',
+      'huevo',
+      // lacteos
+      'milk',
+      'leche',
+      'cheese',
+      'queso',
+      'yogurt',
+      'mantequilla',
+      'butter',
+      'cream',
+      'crema',
+      // granos y panes
+      'rice',
+      'arroz',
+      'bread',
+      'pan',
+      'pasta',
+      'noodle',
+      'fideos',
+      'tortilla',
+      'harina',
+      'flour',
+      'oat',
+      'avena',
+      'cereal',
+      // frutos secos y semillas
+      'almendra',
+      'almond',
+      'nuez',
+      'walnut',
+      'peanut',
+      'mani',
+      'cacahuate',
+      'pistacho',
+      'pistachio',
+      'cashew',
+      'avellana',
+      'hazelnut',
+      'chia',
+      'linaza',
+      'semilla',
+      'seed',
+      'sesamo',
+      // aceites y condimentos
+      'aceite',
+      'oil',
+      'olive oil',
+      'oliva',
+      'vinegar',
+      'vinagre',
+      'salt',
+      'sal',
+      'sugar',
+      'azucar',
+      'salsa',
+      'sauce',
+      'spice',
+      'especia',
+      'herb',
+      'hierba',
     ]);
 
     const synonymRules: Array<{ test: RegExp; value: string }> = [
@@ -270,6 +480,25 @@ export class IngredientsService {
       { test: /cheese/, value: 'queso' },
     ];
 
+    const isLikelyFood = (value: string): boolean => {
+      const normalized = value.toLowerCase();
+      if (foodKeywords.has(normalized)) {
+        return true;
+      }
+
+      // revisa por contencion de palabras clave de comida
+      for (const keyword of foodKeywords) {
+        if (normalized.includes(keyword)) {
+          return true;
+        }
+      }
+
+      // palabras genericas permitidas
+      const genericTokens = ['meat', 'carne', 'seafood', 'marisco', 'vegetal', 'verdura', 'fruta', 'grain', 'grano'];
+      const tokens = normalized.split(/[\s\-_,]+/).filter(Boolean);
+      return tokens.some((token) => foodKeywords.has(token) || genericTokens.includes(token));
+    };
+
     const normalizeName = (rawName: string): string | null => {
       const value = rawName.toLowerCase().trim();
       if (!value || stopwords.has(value)) {
@@ -290,9 +519,16 @@ export class IngredientsService {
           return null;
         }
       }
-      
+
       const rule = synonymRules.find((r) => r.test.test(value));
-      return rule ? rule.value : value;
+      const normalized = rule ? rule.value : value;
+
+      // Si no se parece a un alimento, descartarlo para evitar electronicos u objetos
+      if (!isLikelyFood(normalized)) {
+        return null;
+      }
+
+      return normalized;
     };
 
     const deduped = new Map<string, number>();

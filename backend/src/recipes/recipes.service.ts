@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateRecipeDto } from './dto/create-recipe.dto';
 import { UpdateRecipeDto } from './dto/update-recipe.dto';
@@ -68,6 +68,12 @@ export class RecipesService {
   }
 
   private async ensureSeeded(userId: string): Promise<void> {
+    // Evita romper la FK si el token apunta a un usuario inexistente
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new UnauthorizedException('Invalid token: user not found');
+    }
+
     const existing = await this.prisma.recipe.count({ where: { userId } });
     if (existing > 0) {
       return;
