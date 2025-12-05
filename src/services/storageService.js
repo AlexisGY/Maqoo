@@ -13,6 +13,7 @@ const CACHE_KEYS = {
 
 const APP_KEYS = {
   INITIALIZED: '@maqoo:initialized',
+  USER: '@maqoo:user',
 };
 
 const api = axios.create({
@@ -80,6 +81,9 @@ export const register = async (payload) => {
     console.log('[Register] API Base URL:', API_BASE_URL);
     const response = await api.post('/auth/register', payload);
     await SecureStore.setItemAsync(TOKEN_KEY, response.data.token);
+    if (response.data.user) {
+      await writeCache(APP_KEYS.USER, response.data.user);
+    }
     return response.data;
   } catch (error) {
     console.error('[Register] Error details:', {
@@ -95,14 +99,22 @@ export const register = async (payload) => {
 export const login = async (payload) => {
   const response = await api.post('/auth/login', payload);
   await SecureStore.setItemAsync(TOKEN_KEY, response.data.token);
+  if (response.data.user) {
+    await writeCache(APP_KEYS.USER, response.data.user);
+  }
   return response.data;
 };
 
 export const logout = async () => {
   await SecureStore.deleteItemAsync(TOKEN_KEY);
+  await AsyncStorage.removeItem(APP_KEYS.USER);
 };
 
 export const getToken = async () => SecureStore.getItemAsync(TOKEN_KEY);
+
+export const getCurrentUser = async () => {
+  return readCache(APP_KEYS.USER, null);
+};
 
 // =====================================================
 //               GESTIÓN DE RECETAS

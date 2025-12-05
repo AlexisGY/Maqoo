@@ -13,7 +13,7 @@ import { useNavigation } from '@react-navigation/native';
 import RecipeCard from '../components/RecipeCard';
 import StoreCard from '../components/StoreCard';
 import { getFeaturedRecipes, getCookableRecipesList } from '../services/recipeService';
-import { getPantry, logout } from '../services/storageService';
+import { getPantry, logout, getCurrentUser } from '../services/storageService';
 import { getNearbyStores } from '../services/storeService';
 import * as Location from 'expo-location';
 
@@ -28,6 +28,7 @@ const HomeScreen = ({ onLogout }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [location, setLocation] = useState(null);
   const [permissionChecked, setPermissionChecked] = useState(false);
+  const [userName, setUserName] = useState(null);
 
   const handleLogout = async () => {
     try {
@@ -79,11 +80,12 @@ const HomeScreen = ({ onLogout }) => {
         coords = await requestLocation();
       }
 
-      const [recipes, storesResponse, cookable, pantry] = await Promise.all([
+      const [recipes, storesResponse, cookable, pantry, user] = await Promise.all([
         getFeaturedRecipes(6),
         coords ? getNearbyStores({ ...coords, pageSize: 5 }) : Promise.resolve({ stores: [], error: 'Ubicación no disponible.' }),
         getCookableRecipesList(),
         getPantry(),
+        getCurrentUser(),
       ]);
 
       setFeaturedRecipes(recipes);
@@ -91,6 +93,9 @@ const HomeScreen = ({ onLogout }) => {
       setStoreError(storesResponse.error || null);
       setCookableCount(cookable.length);
       setPantryCount(pantry.length);
+      if (user?.name) {
+        setUserName(user.name);
+      }
     } catch (error) {
       console.error('Error loading home data:', error);
     } finally {
@@ -125,7 +130,7 @@ const HomeScreen = ({ onLogout }) => {
           <View className="flex-row justify-between items-start mb-2">
             <View className="flex-1">
           <Text className="text-2xl font-bold text-food-dark mb-2">
-            ¡Hola! 👋
+            ¡Hola{userName ? `, ${userName}` : ''}! 👋
           </Text>
           <Text className="text-gray-600 mb-3">
             Encuentra qué cocinar con lo que tienes
