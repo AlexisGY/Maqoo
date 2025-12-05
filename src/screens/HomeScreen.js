@@ -223,10 +223,6 @@ const HomeScreen = ({ onLogout }) => {
               <StoreCard
                 key={store.id}
                 store={store}
-                onPress={() => {
-                  // TODO: Navegar a detalle de tienda cuando se implemente
-                  console.log('Store pressed:', store.name);
-                }}
               />
             ))
           )}

@@ -8,6 +8,7 @@ const normalizeStore = (store) => ({
   rating: store.rating ?? 'N/D',
   hours: store.hours || 'Horario no disponible',
   open: store.open ?? null,
+  location: store.location || null,
 });
 
 const defaultPagination = {
